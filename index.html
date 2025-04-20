@@ -1,0 +1,1709 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Cubo Neón</title> <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
+    <style>
+        /* Importar fuente Press Start 2P (estilo Atari) */
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        /* Estilos Neón / Synthwave Grid */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            /* Fondo negro con un sutil degradado púrpura */
+            background: linear-gradient(to bottom, #0a001a, #000000); /* De púrpura oscuro a negro */
+            font-family: 'Press Start 2P', 'Courier New', monospace; /* Fuente estilo Atari */
+        }
+
+        #gameContainer {
+            width: 100%;
+            height: 100%;
+            max-width: 1600px;
+            max-height: 800px;
+            aspect-ratio: 2 / 1; /* Mantiene la proporción 2:1 */
+            position: relative;
+            overflow: hidden;
+            /* Fondo negro con cuadrícula blanca semitransparente */
+            background-color: #000000;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px), /* Líneas horizontales */
+                linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px); /* Líneas verticales */
+            background-size: 40px 40px; /* Tamaño de la cuadrícula */
+            /* Borde y brillo neón para el contenedor */
+            border: 3px solid #00ffff; /* Cyan */
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.7), 0 0 5px rgba(0, 255, 255, 0.5) inset;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+         /* Rayo Escáner de Fondo (Ahora púrpura neón, usando transform para mejor rendimiento) */
+        #scannerBeam {
+            position: absolute;
+            top: 0;
+            left: 0; /* Posición inicial 0, usaremos transform */
+            width: 10%; /* Ancho del rayo */
+            height: 100%;
+            background: linear-gradient(to right, rgba(128, 0, 128, 0) 0%, rgba(128, 0, 128, 0.15) 50%, rgba(128, 0, 128, 0) 100%); /* Púrpura neón */
+            pointer-events: none; /* No interfiere con clics */
+            z-index: 1; /* Detrás del juego */
+            animation: scan 8s infinite linear; /* Animación de escaneo */
+        }
+
+        @keyframes scan {
+            0% { transform: translateX(-100%); } /* Empieza fuera de pantalla a la izquierda */
+            100% { transform: translateX(1100%); } /* Termina fuera de pantalla a la derecha (1000% para cruzar + 100% para salir) */
+        }
+
+
+        #player {
+            width: 8.75%; /* Relativo al contenedor */
+            height: 17.5%; /* Relativo al contenedor */
+            background: rgba(10, 10, 10, 0.5); /* Fondo oscuro */
+            border: 4px solid #00ffff; /* Cyan */
+            box-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff inset;
+            position: absolute;
+            bottom: 0;
+            left: 6.25%; /* Posición inicial relativa */
+            transition: transform 0.1s, border-color 0.3s, box-shadow 0.3s;
+            z-index: 5;
+            box-sizing: border-box;
+        }
+
+        #player.powered {
+            border-color: #ffff00; /* Amarillo */
+            box-shadow: 0 0 25px #ffff00, 0 0 35px #ffff00 inset, 0 0 10px #00ffff; /* Amarillo + base Cyan */
+        }
+
+        #player.jumping {
+             box-shadow: 0 0 15px #00ffff, 0 0 25px #00ffff inset, 0 0 5px #ffffff; /* Brillo al saltar */
+        }
+
+        #player.collected {
+            transform: scale(1.1); /* Pequeño escalado */
+        }
+
+        .obstacle {
+            background: rgba(255, 0, 255, 0.3); /* Relleno semitransparente (Magenta) */
+            border: 4px solid #ff00ff; /* Magenta */
+            box-shadow: 0 0 8px #ff00ff, 0 0 15px #ff00ff inset;
+            width: 3.875%; /* Relativo */
+            height: 7.75%; /* Relativo */
+            position: absolute;
+            bottom: 0;
+            z-index: 4;
+            box-sizing: border-box;
+        }
+
+        .obstacle.large {
+            width: 4.625%; /* Relativo */
+            height: 9.25%; /* Relativo */
+        }
+
+        /* Estilo para obstáculo triangular (Verde Neón) */
+        .obstacle.triangle {
+            width: 0;
+            height: 0;
+            border-left: 3.125vmin solid transparent; /* Tamaño relativo */
+            border-right: 3.125vmin solid transparent; /* Tamaño relativo */
+            border-bottom: 6.25vmin solid #00ff00; /* Base del triángulo (Verde Neón) */
+            background: none;
+            border-top: none;
+            box-shadow: 0 0 8px #00ff00, 0 0 15px #00ff00 inset; /* Brillo neón */
+            bottom: 0;
+            position: absolute;
+            z-index: 4;
+            box-sizing: border-box;
+        }
+
+
+        .coin {
+            width: 3.125%; /* Relativo */
+            height: 6.25%; /* Relativo */
+            border-radius: 50%;
+            position: absolute;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.75em;
+            color: #000000;
+            z-index: 4;
+            border: 2px solid rgba(0, 0, 0, 0.5);
+        }
+
+        .coin.green {
+            background: #00ff00; /* Verde Neón */
+            box-shadow: 0 0 12px #00ff00, 0 0 5px #ffffff inset;
+        }
+        .coin.blue {
+            background: #0077ff; /* Azul Eléctrico */
+            box-shadow: 0 0 12px #0077ff, 0 0 5px #ffffff inset;
+        }
+        .coin.yellow {
+            background: #ffff00; /* Amarillo Neón */
+            box-shadow: 0 0 12px #ffff00, 0 0 5px #ffffff inset;
+            animation: pulse 0.5s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { transform: scale(1); box-shadow: 0 0 12px currentColor, 0 0 5px #ffffff inset; }
+            to { transform: scale(1.1); box-shadow: 0 0 20px currentColor, 0 0 10px #ffffff inset; }
+        }
+
+        #score, #timer, #combo {
+            position: absolute;
+            top: 2.5%; /* Relativo */
+            background: rgba(0, 0, 0, 0.6);
+            padding: 1.25% 3.125%; /* Relativo */
+            border: 2px solid #ffffff;
+            font-size: 2.5vmin;
+            color: #ffffff;
+            font-weight: bold;
+            border-radius: 8px;
+            z-index: 10;
+            min-width: 9.375%; /* Relativo */
+            text-align: center;
+            text-shadow: 0 0 5px #ffffff, 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        #score { right: 1.25%; }
+        #timer { left: 1.25%; }
+        #combo { left: 50%; transform: translateX(-50%); }
+
+        .screen { /* Pantallas de inicio y fin */
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+            text-align: center;
+            padding: 2.5%; /* Relativo */
+            box-sizing: border-box;
+            color: #ffffff;
+        }
+        .screen h1 {
+            font-size: 4.5vmin;
+            margin-bottom: 3.75%; /* Relativo */
+            color: #00ffff; /* Título en Cyan */
+            text-shadow: 0 0 8px #00ffff, 0 0 15px rgba(0, 255, 255, 0.7);
+        }
+        .screen p {
+            font-size: 1.75vmin;
+            margin-bottom: 3.125%; /* Relativo */
+            line-height: 1.8;
+            max-width: 37.5%; /* Relativo */
+            color: #dddddd;
+            text-shadow: 0 0 3px rgba(255, 255, 255, 0.5);
+        }
+        /* Hacer que los spans de colores en la descripción resalten más */
+        .screen p span[style*="color:#ff0000"] { color: #ff0000; font-weight: bold; text-shadow: 0 0 5px #ff0000;} /* Rojo */
+        .screen p span[style*="color:#00ff00"] { color: #00ff00; font-weight: bold; text-shadow: 0 0 5px #00ff00;} /* Verde */
+        .screen p span[style*="color:#0077ff"] { color: #0077ff; font-weight: bold; text-shadow: 0 0 5px #0077ff;} /* Azul */
+        .screen p span[style*="color:#ffff00"] { color: #ffff00; font-weight: bold; text-shadow: 0 0 5px #ffff00;} /* Amarillo */
+        .screen p span[style*="color:#800080"] { color: #800080; font-weight: bold; text-shadow: 0 0 5px #800080;} /* Púrpura */
+
+
+        /* Estilos para el formulario de registro (Ajustados para mejor visualización) */
+        #registerScreen .form-group {
+            margin-bottom: 1.875%; /* Relativo */
+            width: 100%;
+            max-width: 320px; /* Ancho máximo fijo */
+            display: flex; /* Usar flexbox para centrar */
+            flex-direction: column;
+            align-items: center; /* Centrar elementos verticalmente en la columna */
+        }
+
+        .screen input {
+            font-size: 1.75vmin;
+            padding: 1.5% 1.875%; /* Relativo */
+            margin-bottom: 1.25%; /* Relativo */
+            border: 2px solid #00ffff;
+            background-color: #000000;
+            color: #00ffff;
+            border-radius: 5px;
+            width: calc(100% - 24px); /* Ajuste para padding y borde */
+            text-align: center;
+            box-shadow: 0 0 5px #00ffff inset;
+            font-family: 'Press Start 2P', 'Courier New', monospace;
+            box-sizing: border-box;
+        }
+        /* Estilo para el placeholder */
+        .screen input::placeholder {
+            color: #007777;
+            opacity: 0.8;
+            font-size: 1.25vmin;
+        }
+
+        /* Checkbox de términos y condiciones */
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 1.875% 0; /* Relativo */
+             max-width: 320px; /* Ancho máximo fijo */
+             width: 100%;
+        }
+
+        .checkbox-container input[type="checkbox"] {
+            width: auto;
+            margin-right: 1.25%; /* Relativo */
+            transform: scale(1.2);
+            cursor: pointer;
+        }
+
+        .checkbox-container label {
+            font-size: 1.5vmin;
+            cursor: pointer;
+             text-align: left;
+        }
+
+        .checkbox-container a {
+            color: #00ffff;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .checkbox-container a:hover {
+            text-shadow: 0 0 8px #00ffff;
+            text-decoration: underline;
+        }
+
+        /* Modal de términos y condiciones */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 30;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.8);
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from {opacity: 0;}
+            to {opacity: 1;}
+        }
+
+        .modal-content {
+            position: relative;
+            background-color: #0a0a0a;
+            margin: 5% auto;
+            padding: 2.5%; /* Relativo */
+            border: 2px solid #00ffff;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+            width: 80%;
+            max-width: 800px; /* Volvemos al tamaño original */
+            max-height: 80vh;
+            border-radius: 8px;
+            overflow: hidden;
+            animation: modalSlideIn 0.4s;
+            box-sizing: border-box;
+        }
+
+        @keyframes modalSlideIn {
+            from {transform: translateY(-50px); opacity: 0;}
+            to {transform: translateY(0); opacity: 1;}
+        }
+
+        .close-btn {
+            color: #00ffff;
+            float: right;
+            font-size: 3.5vmin;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .close-btn:hover {
+            color: #ffffff;
+            text-shadow: 0 0 10px #00ffff;
+        }
+
+        .modal-content h2 {
+            color: #00ffff;
+            text-align: center;
+            margin-bottom: 2.5%; /* Relativo */
+            font-size: 3vmin;
+            text-shadow: 0 0 5px #00ffff;
+        }
+
+        .modal-content h3 {
+            color: #00ffff;
+            margin-top: 2.5%; /* Relativo */
+            margin-bottom: 1.25%; /* Relativo */
+            font-size: 2vmin;
+        }
+
+        .terms-content {
+            max-height: 50vh;
+            overflow-y: auto;
+            padding: 1.25%; /* Relativo */
+            margin-bottom: 2.5%; /* Relativo */
+            border: 1px solid #333;
+            background-color: rgba(0, 0, 0, 0.3);
+        }
+
+        .terms-content p {
+            color: #cccccc;
+            font-size: 1.5vmin;
+            line-height: 1.8;
+            margin-bottom: 1.875%; /* Relativo */
+        }
+
+        #acceptTermsBtn {
+            display: block;
+            margin: 0 auto;
+            padding: 1.25% 2.5%; /* Relativo */
+            background: #000000;
+            color: #00ff00;
+            border: 2px solid #00ff00;
+            border-radius: 5px;
+            font-size: 1.75vmin;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Press Start 2P', 'Courier New', monospace;
+        }
+
+        #acceptTermsBtn:hover {
+            background: #00ff00;
+            color: #000000;
+            box-shadow: 0 0 10px #00ff00;
+        }
+
+        .floating-text {
+            position: absolute;
+            font-size: 3vmin;
+            font-weight: bold;
+            animation: float 1.2s forwards ease-out;
+            z-index: 99;
+            pointer-events: none;
+            text-shadow: 0 0 5px currentColor, 0 0 8px #ffffff; /* Sombra neón */
+        }
+        @keyframes float {
+            0%  { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-80px) scale(0.8); opacity: 0; }
+        }
+        .plus {
+            color: #00ff00; /* Verde Neón */
+        }
+        .minus {
+            color: #ff0000; /* Rojo Neón */
+        }
+
+        /* Estilos para el Ranking (adaptados al tema neón) */
+        #ranking {
+            margin-top: 2.5%; /* Relativo */
+            font-size: 1.75vmin;
+            max-height: 43.75%; /* Relativo */
+            overflow-y: auto;
+            width: 80%;
+            max-width: 500px; /* Volvemos al tamaño original */
+            border: 1px solid #444;
+            padding: 1.25%; /* Relativo */
+            background-color: rgba(10, 10, 10, 0.85);
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.1) inset;
+        }
+        #ranking h2 {
+            font-size: 2.25vmin;
+            margin-bottom: 1.25%; /* Relativo */
+            text-align: center;
+            color: #ffffff;
+            text-shadow: 0 0 5px #ffffff;
+        }
+        #ranking table { width: 100%; border-collapse: collapse; }
+        #ranking th, #ranking td {
+            border: 1px solid #333;
+            padding: 1% 1.25%; /* Relativo */
+            text-align: left;
+            color: #cccccc;
+            font-size: 1.5vmin;
+        }
+        #ranking th:first-child, #ranking td:first-child,
+        #ranking th:last-child, #ranking td:last-child {
+            text-align: center;
+            width: 15%;
+        }
+        #ranking th:nth-child(2), #ranking td:nth-child(2) {
+            width: 70%;
+        }
+        #ranking th { /* Encabezados de tabla */
+            background-color: #1a1a1a;
+            color: #00ffff;
+            text-shadow: 0 0 4px #00ffff;
+            position: sticky;
+            top: 0;
+        }
+        #ranking tr:nth-child(even) { /* Filas alternas */
+            background-color: rgba(30, 30, 30, 0.7);
+        }
+        #ranking tr:hover td { /* Efecto hover en filas */
+            background-color: rgba(0, 255, 255, 0.1);
+            color: #ffffff;
+        }
+
+        /* --- MEJORAS INTEGRADAS --- */
+
+        /* Efecto de sacudida de pantalla al choque */
+        @keyframes shake {
+            0%   { transform: translate(0, 0); }
+            25%  { transform: translate(-15px, 0); }
+            50%  { transform: translate(15px, 0); }
+            75%  { transform: translate(-15px, 0); }
+            100% { transform: translate(0, 0); }
+        }
+
+        /* Clase para aplicar la animación de sacudida (se añade/quita con JS) */
+        .shake {
+            animation: shake 0.3s;
+        }
+
+        /* Destello rojo en contenedor al recibir impacto (se añade/quita con JS) */
+        #gameContainer.hit {
+            border-color: #ff0000 !important; /* Rojo Neón */
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.7),
+                        0 0 5px rgba(255, 0, 0, 0.5) inset;
+        }
+
+        /* ESTILO CORREGIDO PARA EL BOTÓN DE REGISTRO */
+        .screen button {
+            background: #000000;
+            color: #00ffff;
+            border: 2px solid #00ffff;
+            border-radius: 5px;
+            font-size: 2vmin;
+            padding: 1.25% 2.5%;
+            margin-top: 2%;
+            cursor: pointer;
+            font-family: 'Press Start 2P', 'Courier New', monospace;
+            box-shadow: 0 0 8px rgba(0, 255, 255, 0.4);
+            transition: all 0.3s ease;
+        }
+
+        .screen button:hover {
+            background-color: rgba(0, 255, 255, 0.2);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.7);
+            transform: scale(1.05);
+        }
+
+        #registerButton {
+            background: #000000;
+            color: #00ff00; /* Botón de registro en verde neón */
+            border: 3px solid #00ff00; /* Borde verde neón */
+            box-shadow: 0 0 10px #00ff00, 0 0 5px #00ff00 inset; /* Sombra verde neón */
+             /* Hereda otras propiedades de .screen button */
+        }
+
+         #registerButton:hover {
+            background: #00ff00; /* Fondo verde neón en hover */
+            color: #000000; /* Texto negro en hover */
+            box-shadow: 0 0 15px #00ff00, 0 0 25px #00ff00, 0 0 10px #ffffff inset; /* Sombra más intensa en hover */
+        }
+
+
+        /* ------- OPTIMIZACIONES PARA DISPOSITIVOS MÓVILES ------- */
+
+        /* Forzar orientación horizontal en móviles */
+        @media screen and (orientation: portrait) {
+            body::before {
+                content: "Por favor, gira tu dispositivo para jugar";
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.9);
+                color: #00ffff;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 5vw;
+                text-align: center;
+                z-index: 9999;
+                padding: 20px;
+                box-sizing: border-box;
+                font-family: 'Press Start 2P', 'Courier New', monospace;
+            }
+        }
+
+        /* Ajustes para tablets */
+        @media screen and (max-width: 1024px) {
+            #gameContainer {
+                width: 100%;
+                height: 100vh;
+                max-width: none;
+                max-height: none;
+                aspect-ratio: auto;
+                border-radius: 0;
+                border: none;
+            }
+
+            .screen h1 {
+                font-size: 5vmin;
+            }
+
+            .screen p {
+                font-size: 2vmin;
+                max-width: 90%;
+            }
+
+            #registerScreen .form-group,
+            .checkbox-container {
+                 max-width: 80%; /* Ajustado para móviles */
+            }
+
+
+            .screen input {
+                font-size: 2vmin;
+                padding: 15px;
+            }
+
+            .screen button {
+                padding: 15px 30px;
+                font-size: 2.5vmin;
+            }
+
+            .checkbox-container label {
+                font-size: 1.8vmin;
+            }
+
+            #score, #timer, #combo {
+                font-size: 2.5vmin;
+                padding: 10px 15px;
+                min-width: 60px;
+            }
+
+            .obstacle, .obstacle.large, .coin {
+                 border-width: 2px;
+            }
+
+             /* Ajustes para el modal en pantallas pequeñas */
+            .modal-content {
+                margin: 10% auto;
+                max-width: 90%;
+            }
+
+            .modal-content h2 { font-size: 4vmin; }
+            .modal-content h3 { font-size: 3vmin; }
+            .terms-content p { font-size: 1.8vmin; }
+            #acceptTermsBtn { font-size: 2vmin; }
+
+             /* Ajustes para el ranking en pantallas pequeñas */
+            #ranking {
+                max-height: 50vh;
+                width: 90%;
+                max-width: 350px;
+            }
+             #ranking h2 { font-size: 3vmin; }
+             #ranking th, #ranking td { font-size: 1.8vmin; padding: 5px; }
+        }
+
+        /* Ajustes para móviles en horizontal */
+        @media screen and (max-width: 768px) {
+            #gameContainer {
+                aspect-ratio: auto;
+                height: 100vh;
+                max-height: none;
+            }
+
+            .screen h1 {
+                font-size: 6vmin;
+                margin-bottom: 3vmin;
+            }
+
+            .screen p {
+                font-size: 2.5vmin;
+                line-height: 1.5;
+            }
+
+            .form-group {
+                max-width: 80%;
+            }
+
+            .screen input {
+                padding: 2vmin;
+                font-size: 2.5vmin;
+            }
+
+            .screen button {
+                padding: 2vmin 4vmin;
+                font-size: 3vmin;
+            }
+
+            .checkbox-container label {
+                font-size: 2.2vmin;
+            }
+
+            #score, #timer, #combo {
+                font-size: 3vmin;
+                padding: 2vmin 3vmin;
+            }
+
+            .obstacle, .coin {
+                border-width: 2px;
+            }
+        }
+
+        /* Para dispositivos de pantalla muy pequeña */
+        @media screen and (max-height: 500px) {
+             #gameContainer {
+                height: 100vh;
+            }
+
+             .screen h1 { font-size: 4vmin; margin-bottom: 10px;}
+             .screen p { font-size: 1.5vmin; margin-bottom: 10px;}
+             .screen button { padding: 10px 20px; font-size: 2vmin; margin-top: 10px;}
+             #registerScreen .form-group, .checkbox-container { margin-bottom: 10px; }
+             .screen input { padding: 8px; margin-bottom: 8px; }
+             #score, #timer, #combo { font-size: 2vmin; padding: 8px 10px; min-width: 50px; }
+             #ranking { max-height: 40vh; }
+             .modal-content h2 { font-size: 3vmin; margin-bottom: 10px;}
+             .modal-content h3 { font-size: 2vmin; margin-top: 10px; margin-bottom: 5px;}
+             .terms-content p { font-size: 1.2vmin; margin-bottom: 10px;}
+             #acceptTermsBtn { font-size: 1.5vmin; padding: 8px 15px;}
+        }
+
+
+        /* Soporte específico para iPhone */
+        @supports (-webkit-touch-callout: none) {
+            #gameContainer {
+                height: -webkit-fill-available;
+            }
+
+            body, html {
+                height: -webkit-fill-available;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="scannerBeam"></div>
+
+        <div id="player"></div>
+
+        <div id="score">0</div>
+        <div id="timer">120.0</div>
+        <div id="combo">Combo: 0</div>
+
+        <div id="registerScreen" class="screen" style="display:flex;">
+            <h1>¡Cubo Neón Retro!</h1> <p>Regístrate para jugar y aparecer en el ranking</p>
+            <form id="registerForm">
+                <div class="form-group">
+                    <input id="playerEmail" type="email" placeholder="Tu correo electrónico" required autocomplete="email">
+                </div>
+                <div class="form-group">
+                    <input id="playerName" type="text" placeholder="Tu nombre (Max 15)" maxlength="15" required autocomplete="nickname">
+                </div>
+                <div class="form-group checkbox-container">
+                    <input type="checkbox" id="termsCheckbox" required>
+                    <label for="termsCheckbox">Acepto los <a href="#" id="openTermsBtn">términos y condiciones</a></label>
+                </div>
+                <button type="submit" id="registerButton">REGISTRARME</button>
+            </form>
+        </div>
+
+        <div id="startScreen" class="screen" style="display:none;">
+            <h1>¡Cubo Neón Retro!</h1> <p>
+                <b>Espacio</b> para Saltar | Evita Obstáculos (<span style="color:#ff0000">-1s</span>)<br>
+                Evita Triángulos Saltadores (<span style="color:#ff0000">-1s</span>)<br>
+                Recoge Monedas:<br>
+                <span style="color:#00ff00">Verde</span>: +1s | <span style="color:#0077ff">Azul</span>: +2s & Velocidad (Combo 3+) | <span style="color:#ffff00">Amarilla</span>: +5s, Velocidad & Doble Salto Persistente (Combo 6+)
+            </p>
+            <p class="mobile-instructions" style="display:none;">
+                <b>Toca la pantalla</b> para saltar y evitar obstáculos
+            </p>
+            <button id="startButton">¡JUGAR!</button>
+             </div>
+
+        <div id="rankingDisplay" class="screen" style="display:none;">
+            <h1>¡Cubo Neón Retro!</h1> <p id="finalScoreText"></p>
+            <div id="ranking">
+                <p>Cargando ranking...</p>
+            </div>
+            <button id="restartButton">JUGAR DE NUEVO</button>
+        </div>
+
+        <div id="termsModal" class="modal">
+            <div class="modal-content">
+                <span class="close-btn">&times;</span>
+                <h2>Términos y Condiciones</h2>
+                <div class="terms-content">
+                    <p>Al utilizar este juego, aceptas los siguientes términos y condiciones:</p>
+
+                    <h3>1. Uso del Juego</h3>
+                    <p>Este juego está diseñado para entretenimiento. Puedes utilizarlo de forma personal y no comercial.</p>
+
+                    <h3>2. Información del Usuario</h3>
+                    <p>La información que proporcionas (nombre y correo electrónico) se utiliza exclusivamente para identificarte en el ranking y no será compartida con terceros.</p>
+
+                    <h3>3. Comportamiento</h3>
+                    <p>No se permiten nombres ofensivos o inapropiados. Nos reservamos el derecho de eliminar cualquier entrada que consideremos inadecuada.</p>
+
+                    <h3>4. Propiedad Intelectual</h3>
+                    <p>Todos los derechos del juego pertenecen a sus creadores. No se permite la reproducción o distribución sin autorización.</p>
+
+                    <h3>5. Disponibilidad</h3>
+                    <p>No garantizamos la disponibilidad continua del juego o del servicio de ranking. Podemos realizar mantenimiento o actualizaciones en cualquier momento.</p>
+                </div>
+                <button id="acceptTermsBtn">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+    <script>
+        // --- REFERENCIAS A ELEMENTOS DEL DOM ---
+        const player = document.getElementById('player');
+        const container = document.getElementById('gameContainer');
+        const scoreEl = document.getElementById('score');
+        const timerEl = document.getElementById('timer');
+        const comboEl = document.getElementById('combo');
+        const registerScreen = document.getElementById('registerScreen');
+        const registerForm = document.getElementById('registerForm');
+        const startScreen = document.getElementById('startScreen');
+        const startButton = document.getElementById('startButton');
+        const playerNameInput = document.getElementById('playerName');
+        const playerEmailInput = document.getElementById('playerEmail');
+        const rankingDisplayScreen = document.getElementById('rankingDisplay');
+        const rankingDiv = document.getElementById('ranking');
+        const finalScoreTextEl = document.getElementById('finalScoreText');
+        const restartButton = document.getElementById('restartButton');
+        const registerButton = document.getElementById('registerButton');
+        const scannerBeam = document.getElementById('scannerBeam'); // Referencia al rayo escáner
+
+
+        // Elementos de Términos y Condiciones
+        const termsModal = document.getElementById('termsModal');
+        const openTermsBtn = document.getElementById('openTermsBtn');
+        const closeBtn = document.querySelector('.close-btn');
+        const acceptTermsBtn = document.getElementById('acceptTermsBtn');
+        const termsCheckbox = document.getElementById('termsCheckbox');
+
+        // --- CONSTANTES Y VARIABLES GLOBALES ---
+        const gravity = 0.65;
+        const initialJumpStrength = 18;
+        const groundY = 0;
+        const baseSpeed = 7;
+        const initialTime = 90; // Tiempo de juego reducido a 90 segundos
+        const RANKING_URL = "https://script.google.com/macros/s/AKfycbzBUuj5qYyp9PnnP83ofKBGwStiqmk8ixX4CcQiPZWAevi1_vB6rqiXtYioXM4GcnHidw/exec"; // URL del Ranking API
+
+        // Configuración del juego
+        const OBSTACLE_MIN_GAP = 120; // Espacio mínimo entre obstáculos (ms)
+        const MAX_CONSECUTIVE_OBSTACLES = 3; // Máximo número de obstáculos consecutivos
+        const MIN_COIN_INTERVAL = 1800; // Intervalo mínimo entre monedas (ms)
+        const OBSTACLE_RATE_DECREASE = 0.97; // Factor de reducción de frecuencia de obstáculos por nivel de combo
+        const TRIANGLE_OBSTACLE_CHANCE = 0.3; // Probabilidad de triángulos
+        const TRIANGLE_JUMP_HEIGHT = 100; // Altura del salto del triángulo
+        const TRIANGLE_JUMP_DURATION = 1200; // Duración del salto del triángulo (ms)
+        const TRIANGLE_JUMP_INTERVAL = 2500; // Intervalo entre saltos del triángulo
+
+        // Dificultad
+        const SCORE_FOR_SPEED_INCREASE = 100; // Cada cuántos puntos aumenta la velocidad
+        const SPEED_INCREASE_AMOUNT = 0.5; // Cuánto aumenta la velocidad cada vez
+
+
+        let gameRunning = false;
+        let score = 0;
+        let combo = 0;
+        let gameTime = initialTime;
+        let gameLoopId;
+        let playerName = "Anónimo"; // Nombre por defecto
+        let playerEmail = ""; // Variable para almacenar el correo electrónico
+
+        let playerY = 0;
+        let velocityY = 0;
+        let isJumping = false;
+        let canDoubleJump = false; // Flag: ¿Tiene el poder de doble salto activo?
+
+        let obstacles = []; // Array para obstáculos cuadrados/rectangulares
+        let triangleObstacles = []; // Nuevo array para obstáculos triangulares
+        let coins = [];
+        let currentSpeed = baseSpeed;
+        let speedBoostActive = false;
+        let boostDuration = 0;
+
+        let obstacleInterval;
+        let coinInterval;
+        let lastObstacleTime = 0;
+        let consecutiveObstacles = 0;
+        let lastCoinTime = 0;
+
+        let scoreMilestones = SCORE_FOR_SPEED_INCREASE; // Hito de puntuación para aumentar velocidad
+
+
+        // --- CONFIGURACIÓN DE SONIDO CON TONE.JS ---
+        const jumpSynth = new Tone.Synth().toDestination();
+        const hitSynth = new Tone.Synth().toDestination();
+        const coinSynth = new Tone.Synth().toDestination();
+
+        // Sonidos simples
+        function playJumpSound() {
+            jumpSynth.triggerAttackRelease('C4', '8n'); // Nota C4, duración 1/8 de nota
+        }
+
+        function playHitSound() {
+            hitSynth.triggerAttackRelease('C2', '16n'); // Nota C2, duración 1/16 de nota (más grave y corto)
+        }
+
+        function playCoinSound() {
+            coinSynth.triggerAttackRelease('E5', '16n'); // Nota E5, duración 1/16 de nota (más agudo)
+        }
+
+
+        // --- FUNCIONES DE ADAPTACIÓN RESPONSIVA ---
+
+        // Función para verificar si la página está en un iframe
+        function isInIframe() {
+            try {
+                return window.self !== window.top;
+            } catch (e) {
+                return true;
+            }
+        }
+
+        // Función para detectar si es un dispositivo móvil
+        function isMobileDevice() {
+            return /Android|webOS|iPhone|iPad|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        }
+
+        // Ajustar el contenedor del juego según el entorno y dispositivo
+        function adjustGameContainer() {
+             const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+
+            // Determinar dimensiones óptimas manteniendo proporción base 2:1
+            let containerWidth, containerHeight;
+            const baseAspectRatio = 2 / 1;
+
+            if (windowWidth / windowHeight >= baseAspectRatio) {
+                // La ventana es más ancha que la proporción base, ajustar altura
+                containerHeight = windowHeight * 0.9; // Usar 90% de la altura de la ventana
+                containerWidth = containerHeight * baseAspectRatio;
+            } else {
+                // La ventana es más alta que la proporción base, ajustar ancho
+                containerWidth = windowWidth * 0.95; // Usar 95% del ancho de la ventana
+                containerHeight = containerWidth / baseAspectRatio;
+            }
+
+            // Aplicar límites máximos
+            containerWidth = Math.min(containerWidth, 1600);
+            containerHeight = Math.min(containerHeight, 800);
+
+            // Ajustar las dimensiones del contenedor
+            container.style.width = `${containerWidth}px`;
+            container.style.height = `${containerHeight}px`;
+
+            // Ajustes adicionales para móviles
+            if (isMobileDevice()) {
+                document.documentElement.style.touchAction = 'none'; // Prevenir desplazamiento táctil
+            }
+        }
+
+        // --- FUNCIONES DE GESTIÓN DE PANTALLAS ---
+
+        // Funciones para el modal de términos y condiciones
+        function openTermsModal() {
+            termsModal.style.display = "block";
+        }
+
+        function closeTermsModal() {
+            termsModal.style.display = "none";
+        }
+
+        function acceptTerms() {
+            termsCheckbox.checked = true;
+            closeTermsModal();
+        }
+
+        // Event listeners para el modal
+        openTermsBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            openTermsModal();
+        });
+
+        closeBtn.addEventListener('click', closeTermsModal);
+        acceptTermsBtn.addEventListener('click', acceptTerms);
+
+        // Cerrar modal si se hace clic fuera del contenido
+        window.addEventListener('click', function(e) {
+            if (e.target === termsModal) {
+                closeTermsModal();
+            }
+        });
+
+        // Manejo del formulario de registro
+        registerForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            // Validar formulario
+            if (!playerNameInput.value.trim()) {
+                alert("Por favor, ingresa tu nombre de jugador");
+                return;
+            }
+
+            if (!playerEmailInput.value.trim()) {
+                alert("Por favor, ingresa tu correo electrónico");
+                return;
+            }
+
+            if (!termsCheckbox.checked) {
+                alert("Debes aceptar los términos y condiciones para continuar");
+                return;
+            }
+
+            // Guardar los datos del jugador
+            playerName = playerNameInput.value.trim();
+            if (playerName.length > 15) playerName = playerName.substring(0, 15);
+            playerEmail = playerEmailInput.value.trim();
+
+            // Después del registro, pasar a la pantalla de inicio
+            registerScreen.style.display = 'none';
+            startScreen.style.display = 'flex';
+
+            // Enfocar el botón de inicio
+            startButton.focus();
+
+            // Mostrar instrucciones táctiles si es móvil
+            if (isMobileDevice()) {
+                 document.querySelector('.mobile-instructions').style.display = 'block';
+            } else {
+                 document.querySelector('.mobile-instructions').style.display = 'none';
+            }
+        });
+
+        // Añadir un listener adicional para el botón de registro (por si acaso)
+        registerButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            registerForm.dispatchEvent(new Event('submit'));
+        });
+
+
+        // --- FUNCIÓN DE INICIO DEL JUEGO ---
+        async function startGame() { // Marcar como async para usar await Tone.start()
+            if (gameRunning) return;  // Evitar inicio doble
+
+            console.log("Iniciando juego...");
+
+            // Iniciar contexto de audio después de la interacción del usuario
+            await Tone.start();
+            console.log("AudioContext iniciado.");
+
+
+            startScreen.style.display = 'none';
+            rankingDisplayScreen.style.display = 'none'; // Ocultar pantalla de ranking
+
+            gameRunning = true;
+            score = 0; combo = 0; gameTime = initialTime;
+            obstacles = [];
+            triangleObstacles = []; // Limpiar obstáculos triangulares
+            coins = [];
+            playerY = 0; velocityY = 0; isJumping = false;
+            canDoubleJump = false; // Resetear poder al inicio
+            speedBoostActive = false; boostDuration = 0; currentSpeed = baseSpeed;
+            lastObstacleTime = 0; consecutiveObstacles = 0; lastCoinTime = 0;
+            scoreMilestones = SCORE_FOR_SPEED_INCREASE; // Resetear hito de velocidad
+
+            // Eliminar restos de elementos de partida anterior
+            container.querySelectorAll('.obstacle, .coin, .floating-text').forEach(el => el.remove());
+            player.style.bottom = playerY + 'px';
+            player.classList.remove('powered', 'jumping', 'collected'); // Asegurarse de limpiar clases
+            container.classList.remove('hit', 'shake'); // Limpiar clases del contenedor también
+
+            updateUI();
+            clearIntervals();
+
+            // Programar generación de obstáculos y monedas con tiempos dinámicos
+            scheduleNextObstacle();
+            scheduleNextCoin();
+
+            if (gameLoopId) cancelAnimationFrame(gameLoopId);
+            gameLoopId = requestAnimationFrame(updateGame);
+            console.log("Game loop started.");
+        }
+
+        // Funciones para programar la generación de elementos del juego
+        function scheduleNextObstacle() {
+            if (!gameRunning) return;
+
+            const now = Date.now();
+            const timeSinceLastObstacle = now - lastObstacleTime;
+
+            let interval = 1800; // Intervalo base
+
+            // La dificultad aumenta con la velocidad, que aumenta con la puntuación
+            // Reducir intervalo con el combo (más difícil)
+            if (combo >= 3) interval *= Math.pow(OBSTACLE_RATE_DECREASE, Math.min(10, combo - 2));
+
+
+            if (consecutiveObstacles >= MAX_CONSECUTIVE_OBSTACLES) {
+                interval *= 1.5;
+                consecutiveObstacles = 0;
+            }
+
+             // Asegurar tiempo mínimo entre obstáculos
+            const actualDelay = Math.max(OBSTACLE_MIN_GAP, interval - timeSinceLastObstacle);
+
+
+            obstacleInterval = setTimeout(() => {
+                 // Decidir si generar obstáculo normal o triangular
+                if (Math.random() < TRIANGLE_OBSTACLE_CHANCE && combo >= 1) { // Solo triángulos con combo 1+
+                    spawnTriangleObstacle();
+                } else {
+                    spawnObstacle(); // Obstáculo cuadrado/rectangular normal
+                }
+
+                consecutiveObstacles++;
+                lastObstacleTime = Date.now();
+                scheduleNextObstacle();
+            }, actualDelay);
+        }
+
+        function scheduleNextCoin() {
+            if (!gameRunning) return;
+
+            const now = Date.now();
+            const timeSinceLastCoin = now - lastCoinTime;
+
+            let interval = 2500; // Intervalo base
+
+            if (combo >= 6) interval *= 0.75;
+
+            interval += Math.random() * 1000;
+
+            const actualDelay = Math.max(MIN_COIN_INTERVAL, interval - timeSinceLastCoin);
+
+            coinInterval = setTimeout(() => {
+                spawnCoin();
+                lastCoinTime = Date.now();
+                scheduleNextCoin();
+            }, actualDelay);
+        }
+
+        // --- BUCLE PRINCIPAL DEL JUEGO ---
+        function updateGame() {
+            // console.log("Update game loop running."); // Log para depuración del bucle
+            if (!gameRunning) return;
+
+            gameTime = Math.max(0, gameTime - (1 / 60));
+            updateUI();
+
+            if (gameTime <= 0) {
+                gameOver();
+                return;
+            }
+
+            // Aumentar la velocidad del juego gradualmente con la puntuación
+            if (score >= scoreMilestones) {
+                currentSpeed += SPEED_INCREASE_AMOUNT;
+                scoreMilestones += SCORE_FOR_SPEED_INCREASE; // Establecer el próximo hito
+                console.log("Velocidad aumentada a:", currentSpeed.toFixed(2));
+            }
+
+
+            if (speedBoostActive) {
+                boostDuration -= (1 / 60);
+                if (boostDuration <= 0) {
+                    speedBoostActive = false;
+                    // Opcional: volver a la velocidad base + aumento por score si el boost termina
+                     currentSpeed = baseSpeed + (Math.floor(score / SCORE_FOR_SPEED_INCREASE) * SPEED_INCREASE_AMOUNT);
+                } else {
+                     // Mantener velocidad boost si está activo (prioridad sobre aumento por score)
+                     currentSpeed = baseSpeed * 1.5; // La velocidad del boost es fija
+                }
+            } else {
+                 // Si no hay boost activo, la velocidad se basa en la puntuación
+                 currentSpeed = baseSpeed + (Math.floor(score / SCORE_FOR_SPEED_INCREASE) * SPEED_INCREASE_AMOUNT);
+            }
+
+
+            // Física de salto del jugador
+            velocityY -= gravity;
+            playerY += velocityY;
+
+            if (playerY <= groundY) {
+                playerY = groundY;
+                velocityY = 0;
+                if (isJumping) {
+                    isJumping = false;
+                }
+            }
+
+            player.style.bottom = playerY + 'px';
+
+            updateObstacles();
+            updateTriangleObstacles(); // Nuevo: actualizar obstáculos triangulares
+            updateCoins();
+
+            gameLoopId = requestAnimationFrame(updateGame);
+        }
+
+        // --- COLISIONES Y ACTUALIZACIÓN DE OBSTÁCULOS NORMALES ---
+function updateObstacles() {
+    obstacles = obstacles.filter(obstacleData => {
+        const obstacleElement = obstacleData.element;
+
+        if (!obstacleElement || !obstacleElement.isConnected) {
+            return false;
+        }
+
+        // Mover el obstáculo horizontalmente
+        let currentLeft = parseFloat(obstacleElement.style.left || '0');
+        let newLeft = currentLeft - currentSpeed;
+        obstacleElement.style.left = newLeft + 'px';
+
+        // Colisión jugador-obstáculo
+        if (checkCollision(player, obstacleElement, -5)) {
+            playHitSound(); // Sonido de golpe
+            gameTime = Math.max(0, gameTime - 1);
+            combo = 0;
+            consecutiveObstacles = 0;
+            updateUI();
+            speedBoostActive = false;
+            canDoubleJump = false;
+            player.classList.remove('powered');
+
+            container.classList.add('hit');
+            container.classList.add('shake');
+            setTimeout(() => {
+                if (container.classList.contains('hit')) container.classList.remove('hit');
+                if (container.classList.contains('shake')) container.classList.remove('shake');
+            }, 300);
+
+            const rect = obstacleElement.getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect();
+            showFloatingText(rect.left - containerRect.left + rect.width/2, rect.top - containerRect.top - 10, '-1s', false);
+
+            obstacleElement.remove();
+            return false; // Eliminar del array
+        }
+
+        // Eliminar obstáculo que sale de la pantalla por la izquierda
+        if (newLeft < -obstacleData.width) {
+            score++; // Sumar punto por obstáculo esquivado
+            updateUI();
+            obstacleElement.remove();
+            return false; // Eliminar del array
+        }
+        return true;
+    });
+}
+
+        // --- GENERACIÓN DE OBSTÁCULOS (NORMALES) ---
+        function spawnObstacle() {
+            if (!gameRunning) return;
+
+            const obs = document.createElement('div');
+            obs.className = 'obstacle';
+            let obsWidth = container.offsetWidth * 0.03875; // Tamaño relativo
+            let obsHeight = container.offsetHeight * 0.0775; // Tamaño relativo
+
+            let makeLarger = false;
+            if (combo >= 3 && Math.random() < 0.3) {
+                obs.classList.add('large');
+                obsWidth = container.offsetWidth * 0.04625;
+                obsHeight = container.offsetHeight * 0.0925;
+            }
+
+            obs.style.width = obsWidth + 'px';
+            obs.style.height = obsHeight + 'px';
+            obs.style.left = container.offsetWidth + 'px';
+            obs.style.bottom = groundY + 'px';
+
+            container.appendChild(obs);
+            obstacles.push({
+                element: obs,
+                width: obsWidth,
+                height: obsHeight
+            });
+        }
+
+        // --- GENERACIÓN DE OBSTÁCULOS TRIANGULARES ---
+        function spawnTriangleObstacle() {
+             if (!gameRunning) return;
+
+            const obs = document.createElement('div');
+            obs.className = 'obstacle triangle';
+             // El tamaño del triángulo se define por CSS con vmin
+            const obsWidth = container.offsetWidth * 0.03875; // Usamos un ancho de referencia similar al obstáculo normal
+            const obsHeight = container.offsetHeight * 0.0775; // Usamos un alto de referencia similar al obstáculo normal
+
+
+            // Posición inicial fuera de pantalla (horizontal)
+            obs.style.left = container.offsetWidth + 'px';
+            // Posición inicial vertical en el suelo
+            obs.style.bottom = groundY + 'px';
+
+            container.appendChild(obs);
+
+            const triangleData = {
+                element: obs,
+                width: obsWidth, // Almacenamos el ancho de referencia
+                height: obsHeight, // Almacenamos el alto de referencia
+                isJumping: false,
+                jumpStartTime: 0,
+                initialBottom: groundY, // Guardar la posición inicial en el suelo
+                nextJumpTime: Date.now() + 500 + Math.random() * 1500 // Programar el primer salto
+            };
+
+            triangleObstacles.push(triangleData);
+        }
+
+        // --- COLISIONES Y ACTUALIZACIÓN DE OBSTÁCULOS TRIANGULARES ---
+        function updateTriangleObstacles() {
+            const now = Date.now();
+            triangleObstacles = triangleObstacles.filter(obstacleData => {
+                const obstacleElement = obstacleData.element;
+
+                if (!obstacleElement || !obstacleElement.isConnected) {
+                    return false;
+                }
+
+                // Mover el obstáculo triangular horizontalmente
+                let currentLeft = parseFloat(obstacleElement.style.left || '0');
+                let newLeft = currentLeft - currentSpeed;
+                obstacleElement.style.left = newLeft + 'px';
+
+                // Lógica de salto independiente
+                if (!obstacleData.isJumping && now >= obstacleData.nextJumpTime) {
+                    obstacleData.isJumping = true;
+                    obstacleData.jumpStartTime = now;
+                }
+
+                // Animar el salto vertical si está saltando
+                if (obstacleData.isJumping) {
+                    const elapsed = now - obstacleData.jumpStartTime;
+                    const progress = Math.min(1, elapsed / TRIANGLE_JUMP_DURATION);
+
+                    // Usar una función de easing para un salto más natural (parábola simple)
+                    const jumpProgress = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+                    const currentBottom = obstacleData.initialBottom + jumpProgress * TRIANGLE_JUMP_HEIGHT;
+                    obstacleElement.style.bottom = currentBottom + 'px';
+
+                    // Si el salto terminó
+                    if (progress >= 1) {
+                        obstacleData.isJumping = false;
+                        obstacleElement.style.bottom = obstacleData.initialBottom + 'px'; // Asegurar que aterriza
+                        // Programar el próximo salto
+                        obstacleData.nextJumpTime = now + TRIANGLE_JUMP_INTERVAL + Math.random() * 1000; // Intervalo + aleatoriedad
+                    }
+                }
+
+
+                // Colisión jugador-obstáculo triangular (ajustar margen si es necesario)
+                // La colisión con bounding box ahora debe ser sorteable por arriba
+                if (checkCollision(player, obstacleElement, -5)) {
+                    playHitSound(); // Sonido de golpe
+                    gameTime = Math.max(0, gameTime - 1);
+                    combo = 0;
+                    consecutiveObstacles = 0;
+                    updateUI();
+                    speedBoostActive = false;
+                    canDoubleJump = false;
+                    player.classList.remove('powered');
+
+                    container.classList.add('hit');
+                    container.classList.add('shake');
+                    setTimeout(() => {
+                        if (container.classList.contains('hit')) container.classList.remove('hit');
+                        if (container.classList.contains('shake')) container.classList.remove('shake');
+                    }, 300);
+
+                    const rect = obstacleElement.getBoundingClientRect();
+                    const containerRect = container.getBoundingClientRect();
+                    showFloatingText(rect.left - containerRect.left + rect.width/2, rect.top - containerRect.top - 10, '-1s', false);
+
+                    obstacleElement.remove();
+                    return false; // Eliminar del array
+                }
+
+                // Eliminar obstáculo que sale de la pantalla por la izquierda
+                 // Usamos el ancho de referencia para la eliminación
+                if (newLeft < -obstacleData.width) {
+                    score++; // Sumar punto por obstáculo esquivado
+                    updateUI();
+                    obstacleElement.remove();
+                    return false; // Eliminar del array
+                }
+                return true;
+            });
+        }
+
+
+        // --- GENERACIÓN DE MONEDAS ---
+        function spawnCoin() {
+            if (!gameRunning) return;
+            let coinType; let bonus;
+
+            if (combo >= 6) { coinType = 'yellow'; bonus = 5; }
+            else if (combo >= 3) { coinType = 'blue'; bonus = 2; }
+            else { coinType = 'green'; bonus = 1; }
+
+            const coin = document.createElement('div');
+            coin.className = `coin ${coinType}`;
+            coin.textContent = `+${bonus}s`;
+
+            const coinWidth = container.offsetWidth * 0.03125; // Tamaño relativo
+            const coinHeight = container.offsetHeight * 0.0625; // Tamaño relativo
+
+            coin.style.width = coinWidth + 'px';
+            coin.style.height = coinHeight + 'px';
+
+
+            coin.style.left = (container.offsetWidth + Math.random() * 100) + 'px';
+
+            const containerHeight = container.offsetHeight;
+            const safeBottom = Math.min(containerHeight * 0.7, containerHeight - (coinHeight + 10)); // No más del 70% de altura o cerca del techo
+            const randomBottom = (containerHeight * 0.1) + Math.random() * (safeBottom - (containerHeight * 0.1)); // Entre 10% y safeBottom
+            coin.style.bottom = randomBottom + 'px';
+
+            container.appendChild(coin);
+            coins.push({
+                element: coin,
+                bonus: bonus,
+                type: coinType,
+                width: coinWidth,
+                height: coinHeight
+            });
+        }
+
+        // --- COLISIONES Y ACTUALIZACIÓN DE MONEDAS ---
+        function updateCoins() {
+            coins = coins.filter(coinData => {
+                const coinElement = coinData.element;
+
+                if (!coinElement || !coinElement.isConnected) {
+                    return false;
+                }
+
+                let currentLeft = parseFloat(coinElement.style.left || '0');
+                let newLeft = currentLeft - currentSpeed;
+                coinElement.style.left = newLeft + 'px';
+
+                // Colisión jugador-moneda
+                if (checkCollision(player, coinElement, 5)) {
+                    playCoinSound(); // Sonido de moneda
+                    combo++;
+                    gameTime = Math.min(initialTime + 30, gameTime + coinData.bonus);
+                    score += 5 * combo;
+                    updateUI();
+
+                    if (coinData.type === 'blue' || coinData.type === 'yellow') {
+                        speedBoostActive = true;
+                        boostDuration = 5;
+                    }
+                    if (coinData.type === 'yellow') {
+                        canDoubleJump = true;
+                        player.classList.add('powered');
+                    }
+
+                    player.classList.add('collected');
+                    setTimeout(() => player.classList.remove('collected'), 200);
+
+                    const rect = coinElement.getBoundingClientRect();
+                    const containerRect = container.getBoundingClientRect();
+                    showFloatingText(
+                        rect.left - containerRect.left + rect.width / 2,
+                        rect.top - containerRect.top - 10,
+                        `+${coinData.bonus}s`, true
+                    );
+
+                    coinElement.remove();
+                    return false;
+                }
+
+                // Eliminar moneda que sale de la pantalla por la izquierda
+                if (newLeft < -coinData.width) {
+                    coinElement.remove();
+                    return false;
+                }
+                return true;
+            });
+        }
+
+        // --- FUNCIÓN DE SALTO ---
+        function jump() {
+            if (!gameRunning) return;
+
+            const currentJumpStrength = initialJumpStrength * (combo >= 3 ? 1.15 : 1);
+
+            // Salto Normal (desde el suelo)
+            if (!isJumping) {
+                isJumping = true;
+                velocityY = currentJumpStrength;
+                playJumpSound(); // Sonido de salto
+                player.classList.add('jumping');
+                setTimeout(() => { if(player.classList.contains('jumping')) player.classList.remove('jumping'); }, 200);
+            }
+            // Doble Salto (si está en el aire y TIENE el poder activo)
+            else if (isJumping && canDoubleJump) {
+                velocityY = currentJumpStrength * 1.1;
+                canDoubleJump = false;
+                playJumpSound(); // Sonido de doble salto (puede ser diferente si quieres)
+                player.classList.remove('powered');
+
+                player.classList.add('jumping');
+                setTimeout(() => { if(player.classList.contains('jumping')) player.classList.remove('jumping'); }, 200);
+            }
+        }
+
+        // --- TEXTO FLOTANTE ---
+        function showFloatingText(x, y, text, isPlus) {
+            const el = document.createElement('div');
+            el.className = `floating-text ${isPlus ? 'plus' : 'minus'}`;
+            el.textContent = text;
+
+            const containerRect = container.getBoundingClientRect();
+             // Calcular posición relativa al contenedor
+            const relativeX = x - containerRect.left;
+            const relativeY = y - containerRect.top;
+
+            // Ajustar posición para centrar el texto flotante
+            el.style.left = relativeX + 'px';
+            el.style.top = relativeY + 'px';
+
+             // Ajustar tamaño de fuente basado en el tamaño del contenedor
+            const containerWidth = container.offsetWidth;
+            const containerHeight = container.offsetHeight;
+            const scale = Math.min(containerWidth / 1600, containerHeight / 800); // Escala basada en el tamaño original
+            el.style.fontSize = `${3 * scale}vmin`; // Ajustar tamaño de fuente
+
+            container.appendChild(el);
+
+            el.offsetHeight;
+
+            setTimeout(() => { if (el && el.parentNode) el.remove(); }, 1150);
+        }
+
+        // --- DETECCIÓN DE COLISIONES ---
+        function checkCollision(el1, el2, margin = 0) {
+            try {
+                if (!el1 || !el2 || !el1.isConnected || !el2.isConnected) {
+                    return false;
+                }
+
+                const rect1 = el1.getBoundingClientRect();
+                const rect2 = el2.getBoundingClientRect();
+
+                if (rect1.width <= 0 || rect1.height <= 0 || rect2.width <= 0 || rect2.height <= 0) {
+                    return false;
+                }
+
+                return (
+                    rect1.left < rect2.right + margin &&
+                    rect1.right > rect2.left - margin &&
+                    rect1.top < rect2.bottom + margin &&
+                    rect1.bottom > rect2.top - margin
+                );
+            } catch (e) {
+                console.error("Error en detección de colisiones:", e);
+                return false;
+            }
+        }
+
+        // --- LIMPIAR INTERVALOS ---
+        function clearIntervals() {
+            clearTimeout(obstacleInterval);
+            clearTimeout(coinInterval);
+            obstacleInterval = null;
+            coinInterval = null;
+        }
+
+        // --- ACTUALIZAR UI ---
+        function updateUI() {
+            scoreEl.textContent = score;
+            timerEl.textContent = gameTime.toFixed(1);
+            comboEl.textContent = 'Combo: ' + combo;
+        }
+
+        // --- FIN DE JUEGO Y RANKING ---
+        async function gameOver() {
+            if (!gameRunning) return;
+
+            gameRunning = false;
+            clearIntervals();
+            if (gameLoopId) cancelAnimationFrame(gameLoopId);
+            gameLoopId = null;
+
+            finalScoreTextEl.textContent = `${playerName}, tu puntuación: ${score} | Combo Máx: ${combo}`;
+            rankingDiv.innerHTML = "<p>Cargando ranking...</p>";
+            rankingDisplayScreen.style.display = 'flex';
+
+            const nombreCodificado = encodeURIComponent(playerName);
+            const correoCodificado = encodeURIComponent(playerEmail);
+            const puntajeCodificado = encodeURIComponent(score);
+            const urlEnviar = `${RANKING_URL}?nombre=${nombreCodificado}&email=${correoCodificado}&puntaje=${puntajeCodificado}`;
+
+            try {
+                fetch(urlEnviar).catch(err => {
+                    console.error("Error al enviar puntuación:", err);
+                });
+
+                const response = await fetch(RANKING_URL);
+                if (!response.ok) throw new Error(`Error al obtener ranking: ${response.statusText}`);
+                const data = await response.json();
+
+                if (gameRunning) return;
+
+                const top = data
+                    .map(r => ({
+                        ...r,
+                        puntaje: parseInt(String(r.puntaje).replace(/[^\d]/g, '')) || 0,
+                        nombre: r.nombre || "Anónimo"
+                    }))
+                    .sort((a, b) => b.puntaje - a.puntaje) // Corrected sort logic
+                    .slice(0, 20);
+
+                let table = '<h2>Ranking Top 20</h2><table><thead><tr><th>#</th><th>Nombre</th><th>Puntos</th></tr></thead><tbody>';
+                top.forEach((r, i) => {
+                    const safeName = String(r.nombre)
+                        .replace(/</g, "&lt;")
+                        .replace(/>/g, "&gt;")
+                        .substring(0, 15);
+
+                    table += `<tr><td>${i + 1}</td><td>${safeName}</td><td>${r.puntaje}</td></tr>`;
+                });
+
+                table += '</tbody></table>';
+                rankingDiv.innerHTML = table;
+
+            } catch (error) {
+                console.error("Error con el ranking:", error);
+
+                if (!gameRunning) {
+                    rankingDiv.innerHTML = "<p>No se pudo cargar el ranking. Intenta más tarde.</p>";
+                }
+            }
+        }
+
+        // --- EVENT LISTENERS ---
+        startButton.addEventListener('click', startGame);
+
+        playerNameInput.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter' && !gameRunning && startScreen.style.display !== 'none') {
+                startGame();
+            }
+        });
+         playerEmailInput.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter' || e.keyCode === 13) { // Also allow Enter key in email field
+                 if (!gameRunning && registerScreen.style.display !== 'none') {
+                     registerForm.dispatchEvent(new Event('submit'));
+                 }
+             }
+        });
+
+
+        document.addEventListener('keydown', (e) => {
+            if ((e.code === 'Space' || e.key === ' ' || e.keyCode === 32) && gameRunning) {
+                e.preventDefault();
+                jump();
+            }
+            if ((e.key === 'Enter' || e.keyCode === 13) && !gameRunning && startScreen.style.display !== 'none') {
+                 startGame();
+            } else if ((e.key === 'Enter' || e.keyCode === 13) && !gameRunning && registerScreen.style.display !== 'none') {
+                 // This case is handled by the keyup listener on playerEmailInput,
+                 // but keeping this here as a fallback for general document keydown
+                 // registerForm.dispatchEvent(new Event('submit')); // Avoid double submit
+            }
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if ((e.code === 'Space' || e.key === ' ' || e.keyCode === 32) && gameRunning) {
+                e.preventDefault();
+            }
+        });
+
+        container.addEventListener('touchstart', (e) => {
+            if ((e.target === container || e.target === player) && gameRunning) {
+                jump();
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        if (isMobileDevice()) {
+            container.addEventListener('touchmove', (e) => {
+                if (gameRunning) e.preventDefault();
+            }, { passive: false });
+
+            document.addEventListener('touchstart', (e) => {
+                if (gameRunning && !e.target.closest('button, a, input, .modal-content')) {
+                    jump();
+                    e.preventDefault();
+                }
+            }, { passive: false });
+        }
+
+        restartButton.addEventListener('click', () => {
+            if (!gameRunning) {
+                rankingDisplayScreen.style.display = 'none';
+                registerScreen.style.display = 'flex'; // Go back to register screen
+                 if (playerEmailInput) {
+                    playerEmailInput.value = '';
+                    playerNameInput.value = '';
+                    termsCheckbox.checked = false;
+                    playerEmailInput.focus();
+                 }
+            }
+        });
+
+        window.addEventListener('load', () => {
+            adjustGameContainer();
+
+            if (window.screen && window.screen.orientation) {
+                window.screen.orientation.addEventListener('change', adjustGameContainer);
+            } else {
+                window.addEventListener('orientationchange', adjustGameContainer);
+            }
+
+            registerScreen.style.display = 'flex';
+            startScreen.style.display = 'none';
+            rankingDisplayScreen.style.display = 'none';
+
+            if (playerEmailInput) {
+                playerEmailInput.focus();
+            }
+
+            if (isMobileDevice()) {
+                 document.querySelector('.mobile-instructions').style.display = 'block';
+            } else {
+                 document.querySelector('.mobile-instructions').style.display = 'none';
+            }
+        });
+
+        window.addEventListener('resize', adjustGameContainer);
+
+        window.addEventListener('orientationchange', () => {
+            setTimeout(adjustGameContainer, 100);
+        });
+
+        window.onerror = function(message, source, lineno, colno, error) {
+            console.error("Error en el juego:", message);
+            return true;
+        };
+
+        adjustGameContainer(); // Initial responsive adjustment
+
+    </script>
+</body>
+</html>
